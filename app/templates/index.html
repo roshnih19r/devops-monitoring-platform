@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>DevOps Control Center</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- Background decoration -->
+    <div class="background-glow glow-one"></div>
+    <div class="background-glow glow-two"></div>
+
+    <!-- Navigation -->
+    <header class="topbar">
+
+        <div class="brand">
+            <div class="brand-icon">⌘</div>
+
+            <div>
+                <h1>DevOps Control Center</h1>
+                <span>Application Deployment & Monitoring</span>
+            </div>
+        </div>
+
+        <div class="environment">
+            <span class="status-dot"></span>
+            PRODUCTION
+        </div>
+
+    </header>
+
+
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+
+        <!-- Welcome -->
+        <section class="hero">
+
+            <div>
+                <p class="eyebrow">INFRASTRUCTURE OVERVIEW</p>
+
+                <h2>
+                    Monitor. Deploy.
+                    <span>Stay Reliable.</span>
+                </h2>
+
+                <p class="hero-text">
+                    A centralized dashboard for application health,
+                    container status, deployments and infrastructure monitoring.
+                </p>
+            </div>
+
+            <div class="live-indicator">
+                <span class="pulse"></span>
+                System Operational
+            </div>
+
+        </section>
+
+
+        <!-- Status Cards -->
+        <section class="status-grid">
+
+            <div class="status-card">
+
+                <div class="card-top">
+                    <span class="card-label">APPLICATION</span>
+                    <span class="card-number">01</span>
+                </div>
+
+                <div class="status-value">
+                    <span class="status-dot"></span>
+                    Running
+                </div>
+
+                <p>Application is responding normally.</p>
+
+            </div>
+
+
+            <div class="status-card">
+
+                <div class="card-top">
+                    <span class="card-label">DOCKER</span>
+                    <span class="card-number">02</span>
+                </div>
+
+                <div class="status-value">
+                    <span class="status-dot"></span>
+                    Healthy
+                </div>
+
+                <p>Container is running successfully.</p>
+
+            </div>
+
+
+            <div class="status-card">
+
+                <div class="card-top">
+                    <span class="card-label">HEALTH CHECK</span>
+                    <span class="card-number">03</span>
+                </div>
+
+                <div class="status-value">
+                    <span class="status-dot"></span>
+                    Passing
+                </div>
+
+                <p>Application health endpoint is responding.</p>
+
+            </div>
+
+        </section>
+
+
+        <!-- Deployment Section -->
+        <section class="main-grid">
+
+            <div class="panel deployment-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <p class="panel-label">DEPLOYMENT</p>
+                        <h3>Application Release</h3>
+                    </div>
+
+                    <span class="version">v1.0.0</span>
+
+                </div>
+
+
+                <div class="deployment-info">
+
+                    <div class="info-item">
+                        <span>Current Version</span>
+                        <strong>v1.0.0</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Last Deployment</span>
+                        <strong>12 Oct 2026</strong>
+                    </div>
+
+                    <div class="info-item">
+                        <span>Deployment Status</span>
+                        <strong class="success-text">
+                            ● Successful
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <button class="deploy-button" type="button">
+                    <span>Deploy Latest Version</span>
+                    <span class="arrow">→</span>
+                </button>
+
+                <p class="deployment-note">
+                    Deployment will be handled through the automated CI/CD pipeline.
+                </p>
+
+            </div>
+
+
+            <!-- Health Panel -->
+            <div class="panel health-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <p class="panel-label">APPLICATION HEALTH</p>
+                        <h3>Health Check</h3>
+                    </div>
+
+                    <span class="health-icon">♥</span>
+
+                </div>
+
+
+                <div class="health-status">
+
+                    <div class="health-circle">
+                        <span>✓</span>
+                    </div>
+
+                    <div>
+                        <strong>Healthy</strong>
+                        <p>200 OK · 120 ms</p>
+                    </div>
+
+                </div>
+
+
+                <button class="secondary-button" type="button">
+                    Check Health
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- Infrastructure Monitoring -->
+        <section class="panel monitoring-panel">
+
+            <div class="panel-header">
+
+                <div>
+                    <p class="panel-label">INFRASTRUCTURE</p>
+                    <h3>System Monitoring</h3>
+                </div>
+
+                <span class="monitoring-live">
+                    LIVE
+                </span>
+
+            </div>
+
+
+            <div class="metrics-grid">
+
+                <div class="metric">
+
+                    <div class="metric-header">
+                        <span>CPU Usage</span>
+                        <span>34%</span>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress cpu-progress"></div>
+                    </div>
+
+                    <small>EC2 Instance</small>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-header">
+                        <span>Server</span>
+                        <span class="online">ONLINE</span>
+                    </div>
+
+                    <div class="metric-status">
+                        <span class="status-dot"></span>
+                        Instance operational
+                    </div>
+
+                    <small>AWS EC2</small>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-header">
+                        <span>Container</span>
+                        <span class="online">RUNNING</span>
+                    </div>
+
+                    <div class="metric-status">
+                        <span class="status-dot"></span>
+                        Docker container active
+                    </div>
+
+                    <small>Production</small>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Recent Events -->
+        <section class="main-grid">
+
+            <div class="panel events-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <p class="panel-label">ACTIVITY</p>
+                        <h3>Recent Events</h3>
+                    </div>
+
+                    <span class="event-count">03 EVENTS</span>
+
+                </div>
+
+
+                <div class="event-list">
+
+                    <div class="event">
+
+                        <div class="event-icon success">✓</div>
+
+                        <div>
+                            <strong>Deployment successful</strong>
+                            <span>Application v1.0.0 deployed</span>
+                        </div>
+
+                        <time>2 min ago</time>
+
+                    </div>
+
+
+                    <div class="event">
+
+                        <div class="event-icon success">✓</div>
+
+                        <div>
+                            <strong>Container started</strong>
+                            <span>Production container is running</span>
+                        </div>
+
+                        <time>5 min ago</time>
+
+                    </div>
+
+
+                    <div class="event">
+
+                        <div class="event-icon warning">!</div>
+
+                        <div>
+                            <strong>Health check completed</strong>
+                            <span>Application responded with 200 OK</span>
+                        </div>
+
+                        <time>8 min ago</time>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Quick Actions -->
+            <div class="panel actions-panel">
+
+                <div class="panel-header">
+
+                    <div>
+                        <p class="panel-label">ACTIONS</p>
+                        <h3>Quick Actions</h3>
+                    </div>
+
+                </div>
+
+
+                <div class="actions">
+
+                    <button type="button">
+                        <span>↻</span>
+                        Refresh Status
+                    </button>
+
+                    <button type="button">
+                        <span>♥</span>
+                        Check Health
+                    </button>
+
+                    <button type="button">
+                        <span>→</span>
+                        View Deployments
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- Footer -->
+        <footer>
+
+            <div>
+                <strong>DevOps Control Center</strong>
+                <span> • </span>
+                <span>Automated Application Operations</span>
+            </div>
+
+            <div class="footer-status">
+                <span class="status-dot"></span>
+                All systems operational
+            </div>
+
+        </footer>
+
+    </main>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
