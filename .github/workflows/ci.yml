@@ -40,3 +40,5 @@ jobs:
 
           print("All Flask tests passed!")
           PY
+      - name: Build Docker image
+        run: docker build -t devops-control-center .
