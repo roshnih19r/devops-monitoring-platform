@@ -49,28 +49,13 @@ jobs:
   publish:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-
     permissions:
       contents: read
       packages: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    uses: ./.github/workflows/reusable-ci.yml
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/roshnih19r/devops-monitoring-platform:latest
-            ghcr.io/roshnih19r/devops-monitoring-platform:${{ github.sha }}
+    with:
+      image_name: ghcr.io/roshnih19r/devops-monitoring-platform
+      dockerfile: Dockerfile
+      context: .
