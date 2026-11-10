@@ -1,0 +1,136 @@
+name: Reusable EC2 Deployment
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: Full GHCR image name
+        required: true
+        type: string
+      role_to_assume:
+        description: Developer AWS OIDC role ARN
+        required: true
+        type: string
+      aws_region:
+        description: AWS region
+        required: true
+        type: string
+      instance_id:
+        description: Target EC2 instance ID
+        required: true
+        type: string
+      container_name:
+        description: Docker container name
+        required: true
+        type: string
+      host_port:
+        description: EC2 host port
+        required: true
+        type: string
+      container_port:
+        description: Application container port
+        required: true
+        type: string
+      health_path:
+        description: Application health endpoint
+        required: false
+        type: string
+        default: /health
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy Docker App to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.role_to_assume }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Check EC2 state
+        env:
+          INSTANCE_ID: ${{ inputs.instance_id }}
+        run: |
+          STATE=$(aws ec2 describe-instances \
+            --instance-ids "$INSTANCE_ID" \
+            --query 'Reservations[0].Instances[0].State.Name' \
+            --output text)
+
+          echo "EC2 state: $STATE"
+
+          if [ "$STATE" != "running" ]; then
+            echo "EC2 is not running. Deployment stopped."
+            exit 1
+          fi
+
+      - name: Deploy and verify through SSM
+        env:
+          INSTANCE_ID: ${{ inputs.instance_id }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ github.sha }}
+          CONTAINER_NAME: ${{ inputs.container_name }}
+          HOST_PORT: ${{ inputs.host_port }}
+          CONTAINER_PORT: ${{ inputs.container_port }}
+          HEALTH_PATH: ${{ inputs.health_path }}
+        shell: bash
+        run: |
+          set -e
+
+          COMMANDS=$(jq -nc \
+            --arg image "$IMAGE_NAME:$IMAGE_TAG" \
+            --arg name "$CONTAINER_NAME" \
+            --arg host "$HOST_PORT" \
+            --arg port "$CONTAINER_PORT" \
+            --arg path "$HEALTH_PATH" \
+            '[
+              "set -e",
+              ("docker pull " + $image),
+              ("docker rm -f " + $name + " >/dev/null 2>&1 || true"),
+              ("docker run -d --name " + $name + " --restart unless-stopped -p " + $host + ":" + $port + " " + $image),
+              ("for i in {1..12}; do if curl -fsS http://localhost:" + $host + $path + " >/dev/null; then echo \"Health check passed\"; exit 0; fi; sleep 5; done; echo \"Health check failed\"; exit 1")
+            ]')
+
+          PARAMETERS=$(jq -nc --argjson commands "$COMMANDS" \
+            '{commands: $commands}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters "$PARAMETERS" \
+            --query 'Command.CommandId' \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          for i in {1..30}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' \
+              --output text 2>/dev/null || true)
+
+            echo "Deployment status: $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "Deployment and health check successful!"
+              exit 0
+            fi
+
+            if [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" || "$STATUS" == "TimedOut" ]]; then
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID"
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "Deployment timed out."
+          exit 1
