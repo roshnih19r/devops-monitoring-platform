@@ -93,7 +93,7 @@ jobs:
               ("docker pull " + $image),
               ("docker rm -f " + $name + " >/dev/null 2>&1 || true"),
               ("docker run -d --name " + $name + " --restart unless-stopped -p " + $host + ":" + $port + " " + $image),
-              ("for i in {1..12}; do if curl -fsS http://localhost:" + $host + $path + " >/dev/null; then echo \"Health check passed\"; exit 0; fi; sleep 5; done; echo \"Health check failed\"; exit 1")
+              ("for i in ${seq 1 12}; do if curl -fsS http://localhost:" + $host + $path + " >/dev/null; then echo \"Health check passed\"; exit 0; fi; sleep 5; done; echo \"Health check failed\"; exit 1")
             ]')
 
           PARAMETERS=$(jq -nc --argjson commands "$COMMANDS" \
