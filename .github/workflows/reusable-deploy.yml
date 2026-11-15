@@ -1,41 +1,48 @@
-name: Reusable EC2 Deployment
+name: Reusable AWS EC2 Deployment
 
 on:
   workflow_call:
     inputs:
       image_name:
-        description: Full GHCR image name
+        description: Docker image name
         required: true
         type: string
+
       role_to_assume:
-        description: Developer AWS OIDC role ARN
+        description: AWS IAM role ARN
         required: true
         type: string
+
       aws_region:
         description: AWS region
         required: true
         type: string
+
       instance_id:
-        description: Target EC2 instance ID
+        description: EC2 instance ID
         required: true
         type: string
+
       container_name:
         description: Docker container name
         required: true
         type: string
+
       host_port:
         description: EC2 host port
         required: true
         type: string
+
       container_port:
-        description: Application container port
+        description: Container port
         required: true
         type: string
+
       health_path:
         description: Application health endpoint
         required: false
-        type: string
         default: /health
+        type: string
 
 permissions:
   contents: read
@@ -43,94 +50,166 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy Docker App to EC2
+    name: Deploy and Verify on EC2
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure AWS credentials
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ inputs.role_to_assume }}
           aws-region: ${{ inputs.aws_region }}
 
-      - name: Check EC2 state
+      - name: Check EC2 Instance State
         env:
           INSTANCE_ID: ${{ inputs.instance_id }}
+        shell: bash
         run: |
+          set -euo pipefail
+
           STATE=$(aws ec2 describe-instances \
             --instance-ids "$INSTANCE_ID" \
             --query 'Reservations[0].Instances[0].State.Name' \
             --output text)
 
-          echo "EC2 state: $STATE"
+          echo "EC2 Instance State: $STATE"
 
           if [ "$STATE" != "running" ]; then
-            echo "EC2 is not running. Deployment stopped."
+            echo "EC2 instance is not running."
             exit 1
           fi
 
-      - name: Deploy and verify through SSM
+      - name: Deploy Docker Container and Verify Health
         env:
-          INSTANCE_ID: ${{ inputs.instance_id }}
           IMAGE_NAME: ${{ inputs.image_name }}
           IMAGE_TAG: ${{ github.sha }}
+          INSTANCE_ID: ${{ inputs.instance_id }}
           CONTAINER_NAME: ${{ inputs.container_name }}
           HOST_PORT: ${{ inputs.host_port }}
           CONTAINER_PORT: ${{ inputs.container_port }}
           HEALTH_PATH: ${{ inputs.health_path }}
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
-          COMMANDS=$(jq -nc \
-            --arg image "$IMAGE_NAME:$IMAGE_TAG" \
-            --arg name "$CONTAINER_NAME" \
-            --arg host "$HOST_PORT" \
-            --arg port "$CONTAINER_PORT" \
-            --arg path "$HEALTH_PATH" \
-            '[
-              "set -e",
-              ("docker pull " + $image),
-              ("docker rm -f " + $name + " >/dev/null 2>&1 || true"),
-              ("docker run -d --name " + $name + " --restart unless-stopped -p " + $host + ":" + $port + " " + $image),
-              ("("attempt=1; while [ $attempt -le 12 ]; do if curl -fsS http://127.0.0.1:" + $host + $path + " >/dev/null; then echo 'Health check passed'; exit 0; fi; sleep 5; attempt=$((attempt + 1)); done; echo 'Health check failed'; exit 1")
-            ]')
+          # Validate deployment inputs
+          [[ "$IMAGE_NAME" =~ ^[a-zA-Z0-9._/:@-]+$ ]]
+          [[ "$CONTAINER_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]
+          [[ "$HOST_PORT" =~ ^[0-9]+$ ]]
+          [[ "$CONTAINER_PORT" =~ ^[0-9]+$ ]]
+          [[ "$HEALTH_PATH" =~ ^/[a-zA-Z0-9/_-]*$ ]]
 
-          PARAMETERS=$(jq -nc --argjson commands "$COMMANDS" \
-            '{commands: $commands}')
+          echo "Preparing deployment..."
+          echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+          echo "Container: ${CONTAINER_NAME}"
+
+          # Build remote EC2 shell script
+          REMOTE_SCRIPT=$(cat <<EOF
+          set -eu
+
+          echo "Starting deployment..."
+
+          IMAGE_NAME='${IMAGE_NAME}'
+          IMAGE_TAG='${IMAGE_TAG}'
+          CONTAINER_NAME='${CONTAINER_NAME}'
+          HOST_PORT='${HOST_PORT}'
+          CONTAINER_PORT='${CONTAINER_PORT}'
+          HEALTH_PATH='${HEALTH_PATH}'
+
+          echo "Pulling Docker image..."
+          docker pull "\${IMAGE_NAME}:\${IMAGE_TAG}"
+
+          echo "Removing previous container if present..."
+          docker rm -f "\${CONTAINER_NAME}" || true
+
+          echo "Starting new container..."
+          docker run -d \
+            --name "\${CONTAINER_NAME}" \
+            --restart unless-stopped \
+            -p "\${HOST_PORT}:\${CONTAINER_PORT}" \
+            "\${IMAGE_NAME}:\${IMAGE_TAG}"
+
+          echo "Checking application health..."
+
+          attempt=1
+
+          while [ "\$attempt" -le 12 ]; do
+            if curl -fsS \
+              "http://127.0.0.1:\${HOST_PORT}\${HEALTH_PATH}" \
+              >/dev/null; then
+
+              echo "Health check passed!"
+              echo "Deployment successful."
+              exit 0
+            fi
+
+            echo "Health check attempt \$attempt failed. Retrying..."
+            sleep 5
+            attempt=\$((attempt + 1))
+          done
+
+          echo "Health check failed after 12 attempts."
+          docker logs "\${CONTAINER_NAME}" || true
+          exit 1
+          EOF
+          )
+
+          # Safely convert remote script into JSON
+          PARAMETERS=$(jq -n \
+            --arg script "$REMOTE_SCRIPT" \
+            '{commands: [$script]}')
+
+          echo "Sending deployment command to EC2 through SSM..."
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
-            --document-name AWS-RunShellScript \
+            --document-name "AWS-RunShellScript" \
+            --comment "GitHub Actions Docker Deployment" \
             --parameters "$PARAMETERS" \
             --query 'Command.CommandId' \
             --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
 
-          for i in {1..30}; do
+          # Wait for SSM command execution
+          STATUS="Pending"
+          attempt=1
+
+          while [ "$attempt" -le 30 ]; do
+
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
               --query 'Status' \
               --output text 2>/dev/null || true)
 
-            echo "Deployment status: $STATUS"
+            echo "SSM Status: $STATUS"
 
             if [ "$STATUS" = "Success" ]; then
-              echo "Deployment and health check successful!"
-              exit 0
+              break
             fi
 
-            if [[ "$STATUS" == "Failed" || "$STATUS" == "Cancelled" || "$STATUS" == "TimedOut" ]]; then
-              aws ssm get-command-invocation \
-                --command-id "$COMMAND_ID" \
-                --instance-id "$INSTANCE_ID"
-              exit 1
+            if [ "$STATUS" = "Failed" ] || \
+               [ "$STATUS" = "Cancelled" ] || \
+               [ "$STATUS" = "TimedOut" ]; then
+              break
             fi
 
             sleep 10
+            attempt=$((attempt + 1))
           done
 
-          echo "Deployment timed out."
-          exit 1
+          # Display final command output
+          echo "Fetching deployment result..."
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --output json || true
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "EC2 deployment failed. Final status: $STATUS"
+            exit 1
+          fi
+
+          echo "EC2 deployment completed successfully!"
