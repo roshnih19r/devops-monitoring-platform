@@ -1093,3 +1093,62 @@ footer strong {
         flex-direction: column;
     }
 }
+/* GitHub Workflow Monitoring */
+
+#workflow-panel {
+    margin: 30px 0;
+    padding: 28px;
+    border-radius: 16px;
+}
+
+#workflow-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.workflow-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    min-width: 0;
+}
+
+.workflow-item div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.workflow-item strong {
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.workflow-item span {
+    font-size: 13px;
+    color: #aab6ca;
+    overflow-wrap: anywhere;
+}
+
+.workflow-item a {
+    color: #55aaff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.workflow-item a:hover {
+    text-decoration: underline;
+}
+
+#refresh-workflows {
+    cursor: pointer;
+}

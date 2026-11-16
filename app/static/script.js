@@ -266,3 +266,74 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+document.addEventListener("DOMContentLoaded", () => {
+    const refreshButton = document.getElementById("refresh-workflows");
+    const workflowList = document.getElementById("workflow-list");
+
+    if (!refreshButton || !workflowList) return;
+
+    async function loadWorkflows() {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "Loading...";
+        workflowList.textContent = "Fetching latest GitHub workflows...";
+
+        try {
+            const response = await fetch(
+                "/api/github/workflows/roshnih19r/devops-monitoring-platform",
+                { cache: "no-store" }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Workflow fetch failed");
+            }
+
+            workflowList.replaceChildren();
+
+            if (!data.workflow_runs.length) {
+                workflowList.textContent = "No workflow runs found.";
+                return;
+            }
+
+            data.workflow_runs.forEach(run => {
+                const item = document.createElement("div");
+                item.className = "workflow-item";
+
+                const details = document.createElement("div");
+
+                const name = document.createElement("strong");
+                name.textContent = run.name || "Unnamed workflow";
+
+                const status = document.createElement("span");
+                status.textContent =
+                    `Status: ${run.status} | Result: ${run.conclusion || "Not completed"}`;
+
+                const branch = document.createElement("span");
+                branch.textContent = `Branch: ${run.branch || "Unknown"}`;
+
+                details.append(name, status, branch);
+
+                const link = document.createElement("a");
+                link.href = run.url;
+                link.textContent = "View Run";
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+
+                item.append(details, link);
+                workflowList.appendChild(item);
+            });
+
+        } catch (error) {
+            workflowList.textContent =
+                "Unable to load workflows: " + error.message;
+        } finally {
+            refreshButton.disabled = false;
+            refreshButton.textContent = "↻ Refresh Workflows";
+        }
+    }
+
+    refreshButton.addEventListener("click", loadWorkflows);
+
+    loadWorkflows();
+});
