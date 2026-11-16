@@ -1,6 +1,8 @@
 from flask import Flask, render_template
-from app.github_client import get_latest_workflow_runs
-
+from app.github_client import (
+    get_latest_workflow_runs,
+    get_installation_repositories
+)
 app = Flask(__name__)
 
 
@@ -15,6 +17,32 @@ def health():
         "status": "healthy",
         "message": "Application is running"
     }, 200
+@app.route("/api/github/repositories")
+def github_repositories():
+    try:
+        repositories = get_installation_repositories()
+
+        repo_list = [
+            {
+                "name": repo.get("name"),
+                "full_name": repo.get("full_name"),
+                "owner": repo.get("owner", {}).get("login"),
+                "private": repo.get("private"),
+                "default_branch": repo.get("default_branch")
+            }
+            for repo in repositories
+        ]
+
+        return {
+            "total_count": len(repo_list),
+            "repositories": repo_list
+        }, 200
+
+    except Exception:
+        app.logger.exception("GitHub repository fetch failed")
+        return {
+            "error": "Unable to fetch installed repositories"
+        }, 502
 deployments = [
     {
         "version": "v1.0.0",

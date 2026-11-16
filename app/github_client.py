@@ -55,7 +55,39 @@ def get_installation_token():
 
     response.raise_for_status()
     return response.json()["token"]
+def get_installation_repositories():
+    """Fetch all repositories accessible to this GitHub App installation."""
 
+    token = get_installation_token()
+    repositories = []
+    page = 1
+
+    while True:
+        response = requests.get(
+            f"{GITHUB_API}/installation/repositories",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28"
+            },
+            params={
+                "per_page": 100,
+                "page": page
+            },
+            timeout=15
+        )
+
+        response.raise_for_status()
+        data = response.json()
+
+        repositories.extend(data.get("repositories", []))
+
+        if len(data.get("repositories", [])) < 100:
+            break
+
+        page += 1
+
+    return repositories
 
 def get_latest_workflow_runs(owner, repo):
     """Fetch recent GitHub Actions workflow runs for a repository."""
