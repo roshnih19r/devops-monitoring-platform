@@ -10,5 +10,5 @@ COPY app/ ./app/
 
 EXPOSE 5000
 
-CMD ["python", "-m ", "app.app."]
+CMD ["python", "-m ", "app.app"]
 

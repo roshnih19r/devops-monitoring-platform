@@ -116,40 +116,84 @@ jobs:
           CONTAINER_PORT='${CONTAINER_PORT}'
           HEALTH_PATH='${HEALTH_PATH}'
 
-          echo "Pulling Docker image..."
+          PREVIOUS_NAME="\${CONTAINER_NAME}-previous"
+          HAD_PREVIOUS=false
+
+          echo "Pulling new Docker image..."
           docker pull "\${IMAGE_NAME}:\${IMAGE_TAG}"
 
-          echo "Removing previous container if present..."
-          docker rm -f "\${CONTAINER_NAME}" || true
+          # Preserve the current container
+          if docker inspect "\${CONTAINER_NAME}" >/dev/null 2>&1; then
+            echo "Preserving previous container..."
+            docker rm -f "\${PREVIOUS_NAME}" 2>/dev/null || true
+            docker stop "\${CONTAINER_NAME}"
+            docker rename "\${CONTAINER_NAME}" "\${PREVIOUS_NAME}"
+            HAD_PREVIOUS=true
+          fi
 
+          # Start the new container
           echo "Starting new container..."
-          docker run -d \
+
+          if ! docker run -d \
             --name "\${CONTAINER_NAME}" \
             --restart unless-stopped \
             -p "\${HOST_PORT}:\${CONTAINER_PORT}" \
-            "\${IMAGE_NAME}:\${IMAGE_TAG}"
+            "\${IMAGE_NAME}:\${IMAGE_TAG}"; then
 
-          echo "Checking application health..."
+            echo "New container failed to start."
 
+            if [ "\$HAD_PREVIOUS" = true ]; then
+              docker rename "\${PREVIOUS_NAME}" "\${CONTAINER_NAME}"
+              docker start "\${CONTAINER_NAME}"
+              echo "Previous version restored."
+            fi
+
+            exit 1
+          fi
+
+          # Verify application health
           attempt=1
+          HEALTHY=false
 
           while [ "\$attempt" -le 12 ]; do
             if curl -fsS \
               "http://127.0.0.1:\${HOST_PORT}\${HEALTH_PATH}" \
               >/dev/null; then
 
-              echo "Health check passed!"
-              echo "Deployment successful."
-              exit 0
+              HEALTHY=true
+              break
             fi
 
-            echo "Health check attempt \$attempt failed. Retrying..."
+            echo "Health check attempt \$attempt failed."
             sleep 5
             attempt=\$((attempt + 1))
           done
 
-          echo "Health check failed after 12 attempts."
+          if [ "\$HEALTHY" = true ]; then
+            echo "Health check passed!"
+
+            if [ "\$HAD_PREVIOUS" = true ]; then
+              docker rm -f "\${PREVIOUS_NAME}"
+            fi
+
+            echo "Deployment successful."
+            exit 0
+          fi
+
+          # Rollback if new version is unhealthy
+          echo "Health check failed. Starting rollback..."
+
           docker logs "\${CONTAINER_NAME}" || true
+          docker rm -f "\${CONTAINER_NAME}" || true
+
+          if [ "\$HAD_PREVIOUS" = true ]; then
+            docker rename "\${PREVIOUS_NAME}" "\${CONTAINER_NAME}"
+            docker start "\${CONTAINER_NAME}"
+            echo "Previous version restored."
+          else
+            echo "No previous container was available."
+          fi
+
           exit 1
           EOF
           )
