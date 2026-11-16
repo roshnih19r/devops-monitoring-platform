@@ -74,6 +74,18 @@ def get_deployments():
 @app.route("/api/github/workflows/<owner>/<repo>")
 def github_workflows(owner, repo):
     try:
+        installed_repositories = get_installation_repositories()
+
+        allowed_repositories = {
+            item.get("full_name", "").lower()
+            for item in installed_repositories
+        }
+
+        if f"{owner}/{repo}".lower() not in allowed_repositories:
+            return {
+                "error": "Repository is not accessible to this GitHub App installation"
+            }, 403
+
         data = get_latest_workflow_runs(owner, repo)
 
         workflow_runs = []

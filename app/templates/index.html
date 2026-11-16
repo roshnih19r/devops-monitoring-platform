@@ -76,156 +76,132 @@
         </button>
         </div>
 
+        <div class="repository-selector">
+        <label for="repository-select">Connected Repository</label>
+
+        <select id="repository-select" disabled>
+            <option value="">Loading repositories...</option>
+        </select>
+        </div>
+
         <div id="workflow-list">
         <p>Loading latest workflow status...</p>
         </div>
 
         </section>
 
-
         <!-- Status Cards -->
         <section class="status-grid">
 
-            <div class="status-card">
+    <div class="status-card">
+        <div class="card-top">
+            <span class="card-label">PLATFORM API</span>
+            <span class="card-number">01</span>
+        </div>
 
-                <div class="card-top">
-                    <span class="card-label">APPLICATION</span>
-                    <span class="card-number">01</span>
-                </div>
+        <div class="status-value" id="api-status">
+            Checking...
+        </div>
 
-                <div class="status-value">
-                    <span class="status-dot"></span>
-                    Running
-                </div>
+        <p id="api-message">Checking platform health.</p>
+    </div>
 
-                <p>Application is responding normally.</p>
+    <div class="status-card">
+        <div class="card-top">
+            <span class="card-label">GITHUB CONNECTION</span>
+            <span class="card-number">02</span>
+        </div>
 
-            </div>
+        <div class="status-value" id="github-status">
+            Checking...
+        </div>
 
+        <p id="github-message">Loading connected repositories.</p>
+    </div>
 
-            <div class="status-card">
+    <div class="status-card">
+        <div class="card-top">
+            <span class="card-label">WORKFLOW MONITORING</span>
+            <span class="card-number">03</span>
+        </div>
 
-                <div class="card-top">
-                    <span class="card-label">DOCKER</span>
-                    <span class="card-number">02</span>
-                </div>
+        <div class="status-value" id="workflow-status">
+            Waiting...
+        </div>
 
-                <div class="status-value">
-                    <span class="status-dot"></span>
-                    Healthy
-                </div>
+        <p id="workflow-message">Waiting for workflow data.</p>
+    </div>
 
-                <p>Container is running successfully.</p>
-
-            </div>
-
-
-            <div class="status-card">
-
-                <div class="card-top">
-                    <span class="card-label">HEALTH CHECK</span>
-                    <span class="card-number">03</span>
-                </div>
-
-                <div class="status-value">
-                    <span class="status-dot"></span>
-                    Passing
-                </div>
-
-                <p>Application health endpoint is responding.</p>
-
-            </div>
-
-        </section>
-
+</section>
 
         <!-- Deployment Section -->
-        <section class="main-grid">
+<section class="main-grid">
 
-            <div class="panel deployment-panel">
+    <div class="panel deployment-panel">
 
-                <div class="panel-header">
+        <div class="panel-header">
+            <div>
+                <p class="panel-label">DEPLOYMENT</p>
+                <h3>Application Release</h3>
+            </div>
 
-                    <div>
-                        <p class="panel-label">DEPLOYMENT</p>
-                        <h3>Application Release</h3>
-                    </div>
+            <span class="version" id="deployment-status">
+                Loading...
+            </span>
+        </div>
 
-                    <span class="version">v1.0.0</span>
+        <div class="deployment-info">
 
-                </div>
+            <div class="info-item">
+                <span>Selected Repository</span>
+                <strong id="deployment-repository">--</strong>
+            </div>
 
+            <div class="info-item">
+                <span>Latest Deployment</span>
+                <strong id="deployment-time">--</strong>
+            </div>
 
-                <div class="deployment-info">
+            <div class="info-item">
+                <span>Deployment Result</span>
+                <strong id="deployment-result">Waiting for data</strong>
+            </div>
 
-                    <div class="info-item">
-                        <span>Current Version</span>
-                        <strong>v1.0.0</strong>
-                    </div>
+        </div>
 
-                    <div class="info-item">
-                        <span>Last Deployment</span>
-                        <strong>12 Oct 2026</strong>
-                    </div>
+        <p class="deployment-note" id="deployment-note">
+            Deployment information will be retrieved from actual GitHub Actions runs.
+        </p>
 
-                    <div class="info-item">
-                        <span>Deployment Status</span>
-                        <strong class="success-text">
-                            ● Successful
-                        </strong>
-                    </div>
+    </div>
 
-                </div>
+    <div class="panel health-panel">
 
+        <div class="panel-header">
+            <div>
+                <p class="panel-label">APPLICATION HEALTH</p>
+                <h3>Health Check</h3>
+            </div>
 
-                <button class="deploy-button" type="button">
-                    <span>Deploy Latest Version</span>
-                    <span class="arrow">→</span>
-                </button>
+            <span class="health-icon">♥</span>
+        </div>
 
-                <p class="deployment-note">
-                    Deployment will be handled through the automated CI/CD pipeline.
+        <div class="health-status">
+            <div class="health-circle">
+                <span id="application-health-icon">?</span>
+            </div>
+
+            <div>
+                <strong id="application-health-status">Not configured</strong>
+                <p id="application-health-message">
+                    Application health endpoint not connected yet.
                 </p>
-
             </div>
+        </div>
 
+    </div>
 
-            <!-- Health Panel -->
-            <div class="panel health-panel">
-
-                <div class="panel-header">
-
-                    <div>
-                        <p class="panel-label">APPLICATION HEALTH</p>
-                        <h3>Health Check</h3>
-                    </div>
-
-                    <span class="health-icon">♥</span>
-
-                </div>
-
-
-                <div class="health-status">
-
-                    <div class="health-circle">
-                        <span>✓</span>
-                    </div>
-
-                    <div>
-                        <strong>Healthy</strong>
-                        <p>200 OK · 120 ms</p>
-                    </div>
-
-                </div>
-
-
-                <button class="secondary-button" type="button">
-                    Check Health
-                </button>
-
-            </div>
-
-        </section>
+</section>
 
 
         <!-- Infrastructure Monitoring -->
