@@ -307,15 +307,19 @@ document.addEventListener("DOMContentLoaded", () => {
             workflowList.replaceChildren();
 
             workflowStatus.textContent = "AVAILABLE";
-            workflowMessage.textContent =
-                `${data.total_count} workflow runs retrieved`;
 
             if (workflowRuns.length === 0) {
+                workflowMessage.textContent = "No workflow runs found.";
                 workflowList.textContent = "No workflow runs found.";
                 return;
             }
 
-            workflowRuns.forEach(run => {
+            const latestWorkflowRuns = workflowRuns.slice(0, 3);
+
+            workflowMessage.textContent =
+                `Showing latest ${latestWorkflowRuns.length} of ${data.total_count} workflow runs`;
+
+            latestWorkflowRuns.forEach(run => {
                 const item = document.createElement("div");
                 item.className = "workflow-item";
 
