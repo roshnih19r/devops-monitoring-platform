@@ -87,6 +87,58 @@ document.addEventListener("DOMContentLoaded", () => {
             "The latest deployment workflow did not succeed. Open its GitHub Actions run to investigate.";
     }
 
+
+    // Show the latest actual deployment for the selected repository
+    function updateLatestDeployment(workflowRuns, fullName) {
+        const deploymentStatus = document.getElementById("deployment-status");
+        const deploymentRepository = document.getElementById("deployment-repository");
+        const deploymentTime = document.getElementById("deployment-time");
+        const deploymentResult = document.getElementById("deployment-result");
+        const deploymentNote = document.getElementById("deployment-note");
+
+        deploymentRepository.textContent = fullName;
+
+        const deploymentRuns = workflowRuns.filter(run => {
+            const workflowPath = (run.path || "").toLowerCase();
+            const workflowName = (run.name || "").toLowerCase();
+            return workflowPath.includes("deploy") || workflowName.includes("deploy");
+        });
+
+        if (deploymentRuns.length === 0) {
+            deploymentStatus.textContent = "NOT FOUND";
+            deploymentTime.textContent = "--";
+            deploymentResult.textContent = "No deployment run found";
+            deploymentNote.textContent = "No deployment workflow run was found for this repository.";
+            return;
+        }
+
+        const latest = deploymentRuns[0];
+        deploymentStatus.textContent = (latest.status || "unknown").toUpperCase();
+        deploymentResult.textContent = latest.status === "completed"
+            ? (latest.conclusion || "Unknown").toUpperCase()
+            : (latest.status || "Unknown").toUpperCase();
+
+        const timestamp = latest.updated_at || latest.created_at;
+        deploymentTime.textContent = timestamp
+            ? new Date(timestamp).toLocaleString()
+            : "Time unavailable";
+
+        deploymentNote.replaceChildren();
+
+        const commitInfo = document.createElement("span");
+        commitInfo.textContent = `Commit: ${latest.commit ? latest.commit.substring(0, 7) : "Unknown"}`;
+        deploymentNote.appendChild(commitInfo);
+
+        if (latest.url) {
+            const link = document.createElement("a");
+            link.href = latest.url;
+            link.textContent = " View Deployment Run";
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            deploymentNote.appendChild(link);
+        }
+    }
+
     // 2. Load GitHub App repositories
     async function loadRepositories() {
         repositorySelect.disabled = true;
@@ -191,6 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const workflowRuns = data.workflow_runs || [];
             updateApplicationHealth(workflowRuns);
+            updateLatestDeployment(workflowRuns, fullName);
             workflowList.replaceChildren();
 
             workflowStatus.textContent = "AVAILABLE";
