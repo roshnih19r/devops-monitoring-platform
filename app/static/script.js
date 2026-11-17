@@ -25,63 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!response.ok) {
                 throw new Error("Health check failed");
             }
-            // Update Application Release with actual deployment workflow data
-            const deploymentRuns = (data.workflow_runs || []).filter(run => {
-                const workflowPath = (run.path || "").toLowerCase();
-                const workflowName = (run.name || "").toLowerCase();
-
-                return workflowPath.includes("deploy") ||
-                       workflowName.includes("deploy");
-            });
-
-            const deploymentStatus = document.getElementById("deployment-status");
-            const deploymentRepository = document.getElementById("deployment-repository");
-            const deploymentTime = document.getElementById("deployment-time");
-            const deploymentResult = document.getElementById("deployment-result");
-            const deploymentNote = document.getElementById("deployment-note");
-
-            deploymentRepository.textContent = fullName;
-
-            if (deploymentRuns.length > 0) {
-                const latest = deploymentRuns[0];
-
-                deploymentStatus.textContent =
-                    (latest.status || "unknown").toUpperCase();
-
-                deploymentResult.textContent =
-                    latest.status === "completed"
-                        ? (latest.conclusion || "Unknown").toUpperCase()
-                        : (latest.status || "Unknown").toUpperCase();
-
-                deploymentTime.textContent = latest.created_at
-                    ? new Date(latest.created_at).toLocaleString()
-                    : "Time unavailable";
-
-                deploymentNote.replaceChildren();
-
-                const commitInfo = document.createElement("span");
-                commitInfo.textContent =
-                    `Commit: ${latest.commit ? latest.commit.substring(0, 7) : "Unknown"}`;
-
-                deploymentNote.appendChild(commitInfo);
-
-                if (latest.url) {
-                    const link = document.createElement("a");
-                    link.href = latest.url;
-                    link.textContent = " View Deployment Run";
-                    link.target = "_blank";
-                    link.rel = "noopener noreferrer";
-                    deploymentNote.appendChild(link);
-                }
-
-            } else {
-                deploymentStatus.textContent = "NOT FOUND";
-                deploymentTime.textContent = "--";
-                deploymentResult.textContent = "No deployment run found";
-                deploymentNote.textContent =
-                    "No deployment workflow was found in the latest GitHub Actions runs.";
-            }
-
             apiStatus.textContent = data.status.toUpperCase();
             apiMessage.textContent = data.message;
 
@@ -91,6 +34,58 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+
+    // 2. Show application health from the latest deployment workflow
+    function updateApplicationHealth(workflowRuns) {
+        const healthIcon = document.getElementById("application-health-icon");
+        const healthStatus = document.getElementById("application-health-status");
+        const healthMessage = document.getElementById("application-health-message");
+
+        const deploymentRuns = workflowRuns.filter(run => {
+            const workflowPath = (run.path || "").toLowerCase();
+            const workflowName = (run.name || "").toLowerCase();
+
+            return workflowPath.includes("deploy") ||
+                   workflowName.includes("deploy");
+        });
+
+        if (deploymentRuns.length === 0) {
+            healthIcon.textContent = "?";
+            healthStatus.textContent = "NOT VERIFIED";
+            healthMessage.textContent =
+                "No deployment workflow was found for this repository.";
+            return;
+        }
+
+        // GitHub returns the latest workflow runs first.
+        const latest = deploymentRuns[0];
+
+        if (latest.status === "completed" && latest.conclusion === "success") {
+            const verifiedAt = latest.updated_at || latest.created_at;
+            const timeText = verifiedAt
+                ? new Date(verifiedAt).toLocaleString()
+                : "time unavailable";
+
+            healthIcon.textContent = "✓";
+            healthStatus.textContent = "HEALTH VERIFIED";
+            healthMessage.textContent =
+                `Health check passed during deployment on ${timeText}. This is not a live health check.`;
+            return;
+        }
+
+        if (latest.status !== "completed") {
+            healthIcon.textContent = "…";
+            healthStatus.textContent = "VERIFICATION PENDING";
+            healthMessage.textContent =
+                "The latest deployment workflow is still running. Health verification is not complete yet.";
+            return;
+        }
+
+        healthIcon.textContent = "!";
+        healthStatus.textContent = "DEPLOYMENT FAILED";
+        healthMessage.textContent =
+            "The latest deployment workflow did not succeed. Open its GitHub Actions run to investigate.";
+    }
 
     // 2. Load GitHub App repositories
     async function loadRepositories() {
@@ -194,18 +189,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error(data.error || "Workflow fetch failed");
             }
 
+            const workflowRuns = data.workflow_runs || [];
+            updateApplicationHealth(workflowRuns);
             workflowList.replaceChildren();
 
             workflowStatus.textContent = "AVAILABLE";
             workflowMessage.textContent =
                 `${data.total_count} workflow runs retrieved`;
 
-            if (!data.workflow_runs || data.workflow_runs.length === 0) {
+            if (workflowRuns.length === 0) {
                 workflowList.textContent = "No workflow runs found.";
                 return;
             }
 
-            data.workflow_runs.forEach(run => {
+            workflowRuns.forEach(run => {
                 const item = document.createElement("div");
                 item.className = "workflow-item";
 
@@ -248,6 +245,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             workflowList.textContent =
                 "Unable to load workflows: " + error.message;
+
+            document.getElementById("application-health-icon").textContent = "?";
+            document.getElementById("application-health-status").textContent = "UNAVAILABLE";
+            document.getElementById("application-health-message").textContent =
+                "Unable to retrieve deployment verification data.";
 
         } finally {
             refreshWorkflowsButton.disabled = false;
