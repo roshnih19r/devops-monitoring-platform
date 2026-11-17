@@ -25,6 +25,62 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!response.ok) {
                 throw new Error("Health check failed");
             }
+            // Update Application Release with actual deployment workflow data
+            const deploymentRuns = (data.workflow_runs || []).filter(run => {
+                const workflowPath = (run.path || "").toLowerCase();
+                const workflowName = (run.name || "").toLowerCase();
+
+                return workflowPath.includes("deploy") ||
+                       workflowName.includes("deploy");
+            });
+
+            const deploymentStatus = document.getElementById("deployment-status");
+            const deploymentRepository = document.getElementById("deployment-repository");
+            const deploymentTime = document.getElementById("deployment-time");
+            const deploymentResult = document.getElementById("deployment-result");
+            const deploymentNote = document.getElementById("deployment-note");
+
+            deploymentRepository.textContent = fullName;
+
+            if (deploymentRuns.length > 0) {
+                const latest = deploymentRuns[0];
+
+                deploymentStatus.textContent =
+                    (latest.status || "unknown").toUpperCase();
+
+                deploymentResult.textContent =
+                    latest.status === "completed"
+                        ? (latest.conclusion || "Unknown").toUpperCase()
+                        : (latest.status || "Unknown").toUpperCase();
+
+                deploymentTime.textContent = latest.created_at
+                    ? new Date(latest.created_at).toLocaleString()
+                    : "Time unavailable";
+
+                deploymentNote.replaceChildren();
+
+                const commitInfo = document.createElement("span");
+                commitInfo.textContent =
+                    `Commit: ${latest.commit ? latest.commit.substring(0, 7) : "Unknown"}`;
+
+                deploymentNote.appendChild(commitInfo);
+
+                if (latest.url) {
+                    const link = document.createElement("a");
+                    link.href = latest.url;
+                    link.textContent = " View Deployment Run";
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    deploymentNote.appendChild(link);
+                }
+
+            } else {
+                deploymentStatus.textContent = "NOT FOUND";
+                deploymentTime.textContent = "--";
+                deploymentResult.textContent = "No deployment run found";
+                deploymentNote.textContent =
+                    "No deployment workflow was found in the latest GitHub Actions runs.";
+            }
 
             apiStatus.textContent = data.status.toUpperCase();
             apiMessage.textContent = data.message;
@@ -274,104 +330,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             button.disabled = false;
             button.textContent = originalText;
-        });
-    });
-
-
-    // 8. View deployment history
-    document.querySelectorAll("button").forEach(button => {
-        if (button.textContent.trim() !== "View Deployments") return;
-
-        button.addEventListener("click", async () => {
-            const originalText = button.textContent;
-            button.disabled = true;
-            button.textContent = "Loading...";
-
-            try {
-                const response = await fetch("/api/deployments");
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error("Could not load deployments");
-                }
-
-                let panel = document.getElementById("deployment-history");
-
-                if (!panel) {
-                    panel = document.createElement("div");
-                    panel.id = "deployment-history";
-                    panel.style.marginTop = "20px";
-                    panel.style.padding = "16px";
-                    panel.style.borderRadius = "12px";
-                    panel.style.background = "#111827";
-                    button.insertAdjacentElement("afterend", panel);
-                }
-
-                panel.replaceChildren();
-
-                const heading = document.createElement("h3");
-                heading.textContent = "Deployment History";
-                panel.appendChild(heading);
-
-                if (!data.deployments || data.deployments.length === 0) {
-                    const empty = document.createElement("p");
-                    empty.textContent = "No deployments recorded yet.";
-                    panel.appendChild(empty);
-                }
-
-                (data.deployments || []).forEach(deployment => {
-                    const item = document.createElement("p");
-                    item.textContent =
-                        `${deployment.version} — ${deployment.status} — ${deployment.time}`;
-                    panel.appendChild(item);
-                });
-
-            } catch (error) {
-                alert("Unable to load deployment history: " + error.message);
-
-            } finally {
-                button.disabled = false;
-                button.textContent = originalText;
-            }
-        });
-    });
-
-
-    // 9. Demo deployment record only
-    document.querySelectorAll("button").forEach(button => {
-        if (!button.textContent.includes("Deploy Latest Version")) return;
-
-        button.addEventListener("click", async () => {
-            const confirmed = confirm(
-                "Create a demo deployment record? This will not deploy to AWS."
-            );
-
-            if (!confirmed) return;
-
-            const originalText = button.textContent;
-            button.disabled = true;
-            button.textContent = "Submitting...";
-
-            try {
-                const response = await fetch("/api/deploy", {
-                    method: "POST"
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.message || "Request failed");
-                }
-
-                alert(data.message);
-
-            } catch (error) {
-                alert("Could not submit request: " + error.message);
-
-            } finally {
-                button.disabled = false;
-                button.textContent = originalText;
-            }
         });
     });
 
