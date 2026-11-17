@@ -139,6 +139,65 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+
+    // Show real deployment workflow runs as deployment history
+    function updateDeploymentHistory(workflowRuns) {
+        const eventList = document.querySelector(".event-list");
+        const eventCount = document.querySelector(".event-count");
+
+        const deploymentRuns = workflowRuns.filter(run => {
+            const workflowPath = (run.path || "").toLowerCase();
+            const workflowName = (run.name || "").toLowerCase();
+            return workflowPath.includes("deploy") || workflowName.includes("deploy");
+        });
+
+        eventCount.textContent = `${deploymentRuns.length} DEPLOYMENT RUNS`;
+        eventList.replaceChildren();
+
+        if (deploymentRuns.length === 0) {
+            const emptyMessage = document.createElement("p");
+            emptyMessage.textContent = "No deployment workflow runs found for this repository.";
+            eventList.appendChild(emptyMessage);
+            return;
+        }
+
+        deploymentRuns.forEach(run => {
+            const item = document.createElement("div");
+            item.className = "workflow-item";
+
+            const details = document.createElement("div");
+
+            const title = document.createElement("strong");
+            title.textContent = run.name || "Deployment workflow";
+
+            const result = document.createElement("span");
+            result.textContent = `Status: ${(run.status || "unknown").toUpperCase()} | Result: ${(run.conclusion || "pending").toUpperCase()}`;
+
+            const timestamp = document.createElement("span");
+            const date = run.updated_at || run.created_at;
+            timestamp.textContent = date
+                ? `Updated: ${new Date(date).toLocaleString()}`
+                : "Time unavailable";
+
+            const commit = document.createElement("span");
+            commit.textContent = `Commit: ${run.commit ? run.commit.substring(0, 7) : "Unknown"}`;
+
+            details.append(title, result, timestamp, commit);
+            item.appendChild(details);
+
+            if (run.url) {
+                const link = document.createElement("a");
+                link.href = run.url;
+                link.textContent = "View Run";
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+                item.appendChild(link);
+            }
+
+            eventList.appendChild(item);
+        });
+    }
+
     // 2. Load GitHub App repositories
     async function loadRepositories() {
         repositorySelect.disabled = true;
@@ -244,6 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const workflowRuns = data.workflow_runs || [];
             updateApplicationHealth(workflowRuns);
             updateLatestDeployment(workflowRuns, fullName);
+            updateDeploymentHistory(workflowRuns);
             workflowList.replaceChildren();
 
             workflowStatus.textContent = "AVAILABLE";
