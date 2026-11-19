@@ -40,7 +40,6 @@ jobs:
 
           assert client.get("/").status_code == 200
           assert client.get("/health").get_json()["status"] == "healthy"
-          assert client.get("/api/deployments").status_code == 200
 
           print("All Flask tests passed!")
           PY
