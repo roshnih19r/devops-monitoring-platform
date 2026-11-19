@@ -17,6 +17,21 @@ The repository also contains reusable GitHub Actions workflows that other reposi
 - **Deployment verification:** Check application health after deployment and restore the previous container if the new deployment fails.
 - **Dashboard:** View platform health, workflow status, and deployment history.
 
+
+## Project Screenshots
+
+### Dashboard
+
+![DevOps Control Center Dashboard](screenshots/Dashboard.webp.jpeg)
+
+### GitHub Actions CI Pipeline
+
+![Successful GitHub Actions CI pipeline](screenshots/github-actions.webp.jpeg)
+
+### GitHub Container Registry
+
+![Published Docker images in GHCR](screenshots/ghcr.webp.jpeg)
+
 ## Architecture
 
 ```text
